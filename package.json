@@ -1,0 +1,19 @@
+{
+  "name": "ij",
+  "version": "0.0.2",
+  "description": "Simple dependency injection for JavaScript",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kylehg/ij"
+  },
+  "author": "Kyle Hardgrave",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kylehg/ij/issues"
+  },
+  "homepage": "https://github.com/kylehg/ij"
+}
