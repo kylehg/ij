@@ -3,12 +3,60 @@ import _ from './utils'
 const ProviderType = {
   CTOR: Symbol('constructor'),
   FACTORY: Symbol('factory'),
-  CONST: Symbol('constant'),
+  CONSTANT: Symbol('constant'),
+}
+
+const VALID_OPTIONS = ['override', 'using']
+
+function Options(opts) {
+  this.override = opts.override == null ? false : opts.override
+  this.using = opts.using == null ? null : opts.using
+  for (key in opts) {
+    if (VALID_OPTIONS.indexOf(key) == -1) {
+      throw new Error(`Supplied invalid option: ${key}`)
+    }
+  }
 }
 
 class Registry {
   constructor() {
-    this._providers = new Map()
+    this._providers = new immutable.Map()
+  }
+
+  ctor(name: string, provider: Class<Object>, deps?: Array<string>, opts?: ProviderOptions) {
+    return this.add(name, ProviderType.CTOR, provider, opt_deps, opt_opts)
+  }
+
+  factory(name: string, provider: Function, deps?: Array<string>, opt_opts?: ProviderOptions) {
+    return this.add(name, ProviderType.FACTORY, provider, opt_deps, opt_opts)
+  }
+
+  constant(name: string, provider: any, opt_opts) {
+    return this.add(name, ProviderType.CONSTANT, provider, [], opt_opts)
+  }
+
+  /**
+   * Add a provider.
+   *
+   * @param {string} name
+   * @param {ProviderType} type
+   * @param {(Array.<string>|Object)=} opt_deps
+   * @param {Object=} opt_opts
+   * @return {Registry}
+   */
+  add(name, type, provider, opt_deps, opt_opts) {
+    let deps = Array.isArray(opt_deps) ? opt_deps : provider.$inject
+    let opts = Array.isArray(opt_deps) ? opt_opts : opt_deps
+    deps = deps || []
+    opts = new Options(opts || {})
+
+    const dependencyMap = new Map()
+    deps.forEach((depName) => {
+      const providerName = opts.using && opts.using[depName] || depName
+      dependencyMap.set(depName, providerName)
+    })
+
+    return this._add(name, type, provider, dependencyMap, opts)
   }
 
   /**
@@ -25,26 +73,83 @@ class Registry {
   }
 
   build(name) {
-    return new Promise((reject, resolve) => {
-      if (!this._providers.has(name)) {
-        return reject(new Error(`No provider "${name}"`))
-      }
+    return new Injector(this._providers).build(name)
+  }
+}
 
+class Injector {
+  constructor(providers) {
+    this._providers = providers
+    this._results = new Map()
+  }
+
+  build(name) {
+    if (!this._providers.has(name)) {
+      return Promise.reject(new Error(`Provider not found: ${name}`))
+    }
+
+    if (this._results.has(name)) {
+      return Promise.resolve(this._results.get(name))
+    }
+
+    const provider = this._providers.get(name)
+    const resultsMap = new Map()
+    const promises = _.map(provider.getDependencyMap(), (providerName, dependencyName) => {
+      const promise = isLiteral(providerName) ?
+          Promise.resolve(providerName) :
+          this.build(providerName)
+
+      return promise.then((result) => {
+        resultsMap.set(dependencyName, result)
+      })
+    })
+
+    return Promise.all(promises).then(() => {
+      const result = provider.buildWithDependencies(resultsMap)
+      this._results.set(name, result)
+      return result
     })
   }
 }
 
 class ProviderDescriptor {
-  constructor({name, provider, type, dependencies}, {shouldCache}) {
+  constructor({name, provider, type, dependencyMap}, {shouldCache}) {
     this._name = name
     this._provider = provider
     this._providerType = providerType
-    this._dependencies = dependencies || {}
+    this._dependencyMap = dependencyMap
+  }
 
-    this._shouldCache = shouldCache == null ? true : shouldCache
+  buildWithDependencies(resultsMap) {
+    return new Promise((resolve, reject) => {
+      switch (this._providerType) {
+        case ProviderType.CTOR:
+          return resolve(new this._provider(resultsMap))
+        case ProviderType.FACTORY:
+          return resolve(this._provider(resultsMap))
+        case ProviderType.CONSTANT:
+          return resolve(this._provider)
+        default:
+          reject(new Error(`Invalid provider type ${this._providerType}`))
+      }
+    })
   }
 }
 
-export default {
+function literal(value) {
+  return {__literal: value}
+}
 
+function isLiteral(test) {
+  return !!(test && test.__literal)
+}
+
+function getLiteral(test) {
+  return test && test.__literal || null
+}
+
+export default {
+  literal,
+  Registry,
+  ProviderType,
 }
