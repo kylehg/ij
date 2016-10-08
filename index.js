@@ -77,15 +77,28 @@ class Registry {
   }
 }
 
-class Injector {
-  constructor(providers) {
-    this._providers = providers
-    this._results = new Map()
+function build(name: string, providers: immutable.Map<string, Provider>): Promise<any> {
+  let results = new immutable.Map()
+  if (!this._providers.has(name)) {
+    return Promise.reject(new ProviderNotFound(`Cannot find provider ${name}`))
+  }
+  if (this._results.has(name)) {
+    return Promise.resolve(this._results.get(name))
   }
 
-  build(name) {
+
+}
+
+class Injector {
+  constructor(providers: immutable.Map<string, Provider>) {
+    this._providers = providers
+    this._results = new immutable.Map()
+  }
+
+  build(name: string): Promise<any> {
     if (!this._providers.has(name)) {
-      return Promise.reject(new Error(`Provider not found: ${name}`))
+      return Promise.reject(new ProviderNotFound(
+          `Cannot find provider for "${name}"`))
     }
 
     if (this._results.has(name)) {
