@@ -1,6 +1,6 @@
-import test from 'ava'
+const test = require('ava')
 
-import ij from './lib/index'
+const ij = require('./index')
 
 test('Registry#ctor() fails if not a function', t => {
   const r = new ij.Registry()

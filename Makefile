@@ -1,12 +1,6 @@
-node_modules:
+node_modules: package.json
 	npm install
 
-lib: node_modules package.json
-	./node_modules/.bin/babel src --out-dir lib
-
 .PHONY: test
-test: lib
+test: node_modules
 	ava
-
-.PHONY: prepublish
-prepublish: lib

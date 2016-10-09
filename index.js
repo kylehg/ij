@@ -8,14 +8,8 @@
  * - Allow specifying dependencies by name (robot leg problem)
  * - Unfilfilled dependencies are failures, not null
  * - Allow easy debugging of dependency graph
- *
- * @flow
  */
-import immutable from 'immutable'
-
-type ProviderType = 'CONSTANT' | 'CTOR' | 'FN';
-
-const IMap = immutable.Map
+const immutable  = require('immutable')
 
 /**
  * A registry for holding all dependency providers.
@@ -27,34 +21,59 @@ const IMap = immutable.Map
  * TKTK This is analagous to the Graph() in Shepherd.
  */
 class Registry {
-  _providers: IMap<string, Provider>;
-
-  constructor(opt_providers?: IMap<string, Provider>) {
-    this._providers = opt_providers || new IMap()
+  /**
+   * @param {?immutable.Map<string, Provider>} opt_providers
+   */
+  constructor(opt_providers) {
+    this._providers = opt_providers || new immutable.Map()
   }
 
-  ctor(name: string, ctor: Function, opt_options?: Object): Registry {
-    assert(typeof ctor == 'function',
+  /**
+   * @param {string} name
+   * @param {Function} Ctor
+   * @param {?Object} opt_options
+   * @return {Registry}
+   */
+  ctor(name, Ctor, opt_options) {
+    assert(typeof Ctor == 'function',
         `Cannot provide nonfunction for constructor provider ${name}`)
-    const deps = getDependencyNames(ctor)
-    return this._add(name, 'CTOR', ctor, deps, opt_options)
+    const deps = getDependencyNames(Ctor)
+    return this._add(name, 'CTOR', Ctor, deps, opt_options)
   }
 
-  constant(name: string, constant: any): Registry {
+  /**
+   * @param {string} name
+   * @param {any} constant
+   * @return {Registry}
+   */
+  constant(name, constant) {
     assert(constant != null,
         `Cannot provide null for constant provider ${name}`)
     return this._add(name, 'CONSTANT', constant, [])
   }
 
-  fn(name: string, fn: Function, opt_options?: Object): Registry {
+  /**
+   * @param {string} name
+   * @param {Function} fn
+   * @param {?Object} opt_options
+   * @return {Registry}
+   */
+  fn(name, fn, opt_options) {
     assert(typeof fn == 'function',
         `Cannot provide nonfunction for function provider ${name}`)
     const dependencies = getDependencyNames(fn)
     return this._add(name, 'FN', fn, dependencies, opt_options)
   }
 
-  _add(name: string, type: ProviderType, factory: T, deps: Array<string>,
-      options: Object = {}): Registry {
+  /**
+   * @param {string} name
+   * @param {ProviderType} type
+   * @param {any} factory
+   * @param {Array<string>} deps
+   * @param {Object} options
+   * @return {Registry}
+   */
+  _add(name, type, factory, deps, options={}) {
     let mappedDeps = deps
     if (options.using) {
       mappedDeps = deps.map(d => options.using[d] || d)
@@ -65,7 +84,10 @@ class Registry {
     return new Registry(this._providers.set(provider))
   }
 
-  buildInjector(): Injector {
+  /**
+   * @return {Injector}
+   */
+  buildInjector() {
     // TODO validate graph with top-sort
     return new Injector(this._providers)
   }
@@ -77,8 +99,11 @@ class Registry {
  * First checks for named dependencies in the `$ij` field, used in minified
  * contexts. Otherwise attempts to parse the dependencies by name from the
  * function signature, accounting for ES6 classes.
+ *
+ * @param {Function} fn
+ * @return {Array<string>}
  */
-function getDependencyNames(fn: Function): Array<string> {
+function getDependencyNames(fn) {
   if (fn.$ij && Array.isArray(fn.$ij)) return fn.$ij
 
   const fnStr = fn.toString()
@@ -102,31 +127,38 @@ function getDependencyNames(fn: Function): Array<string> {
 
 /** The descriptor of a provider. */
 class Provider {
-  /** The global name of the Provider as it exists in the Registry. */
-  name: string;
-
-  /** The type of this provider, used in determining how to build itself. */
-  type: ProviderType;
-
-  /** The actual value of the provider, which can be anything. */
-  factory: T;
-
-  /**
-   * The list of dependencies required by this Provider, identified by their
-   * global names in the Registry.
-   */
-  dependencies: Array<string>;
-
-  /** Whether this Provider's result can be globally cached. */
-  isCacheable: boolean;
-
-  constructor(name: string, type: ProviderType, factory: any,
-      deps: Array<string>, opts={}) {
+  constructor(name, type, factory, deps, opts={}) {
+    /**
+     * The global name of the Provider as it exists in the Registry.
+     * @type {string}
+     */
     this.name = name
+
+    /**
+     * The type of this provider, used in determining how to build itself.
+     * @type {ProviderType}
+     */
     this.type = type
+
+    /**
+     * The actual value of the provider, which can be anything
+     * @type {any}
+     */
     this.factory = factory
+
+    /**
+     * The list of dependencies required by this Provider, identified by their
+     * global names in the Registry.
+     * @type {Array<string>}
+     */
     this.dependencies = deps
+
+    /**
+     * Whether this Provider's result can be globally cached.
+     * @type {boolean}
+     */
     this.isCacheable = !!opts.isCacheable
+
     Object.seal(this)
   }
 }
@@ -144,12 +176,12 @@ class Provider {
  * TKTK This is analagous to a Builder() in Shepherd.
  */
 class Injector {
-  _providers: IMap<string, Provider>;
-  _cache: IMap<string, any>;
-
-  constructor(providers: IMap<string, Provider>) {
+  constructor(providers) {
+    /** @private {immutable.Map<string, Provider>} */
     this._providers = providers
-    this._cache = new IMap()
+
+    /** @private {immutable.Map<string, any>} */
+    this._cache = new immutable.Map()
   }
 
   /**
@@ -159,8 +191,11 @@ class Injector {
    * time it's called unless the dependency has specifically indicated that it
    * is cacheable. However it will not build a dependency more than once per
    * call, even if the same dependency is required multiple times.
+   *
+   * @param {string} name
+   * @param {Promise<any>}
    */
-  build(name: string): Promise<any> {
+  build(name) {
     if (!this._providers.has(name)) {
       return Promise.reject(new Error(`Provider not found for ${name}`))
     }
@@ -178,7 +213,11 @@ class Injector {
         })
   }
 
-  _build(provider: Provider): Promise<IMap<string, any>> {
+  /**
+   * @param {Provider} provider
+   * @return {Promise<immutable.Map<string, any>>}
+   */
+  _build(provider) {
     if (this._cache.has(provider.name)) {
       return this._cache.get(provider.name)
     }
@@ -203,7 +242,7 @@ class Injector {
 
     return Promise.all(childPromises)
       .then((depResults) => {
-        const results = new IMap().merge(...depResults)
+        const results = new immutable.Map().merge(...depResults)
         return this._buildProvider(provider, results)
           .then((result) => {
             if (provider.isCacheable) {
@@ -214,7 +253,12 @@ class Injector {
       })
   }
 
-  _buildProvider(provider: Provider, results: IMap<string, any>): Promise<any> {
+  /**
+   * @param {Provider} provider
+   * @param {immutable.Map<string, any>} results
+   * @return {Promise<any>}
+   */
+  _buildProvider(provider, results) {
     const args = provider.dependencies.map(d => results.get(d))
     switch (provider.type) {
       case 'CONSTANT':
@@ -228,26 +272,35 @@ class Injector {
 }
 
 class ProviderNotFound extends Error {
-  _parents: ?Array<string>;
-
-  addParent(name: string): ProviderNotFound {
+  /**
+   * @param {string} name
+   * @return {ProviderNotFound}
+   */
+  addParent(name) {
     if (!this._parents) this._parents = [name]
     else this._parents.push(name)
-    return this._parents
+    return this
   }
 
-  get parents(): Array<string> {
+  /** @return {Array<string>} */
+  get parents() {
     return this._parents || []
   }
 }
 
-function assert<T>(val: T|?T, msg: string): T {
+/**
+ * @param {T|?T} val
+ * @param {string} msg
+ * @return {T}
+ * @template {T}
+ */
+function assert(val, msg) {
   if (!val) {
     throw new Error(msg)
   }
   return val
 }
 
-export default {
+module.exports = {
   Registry,
 }
