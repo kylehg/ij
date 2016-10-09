@@ -1,6 +1,6 @@
 import test from 'ava'
 
-import ij from './index'
+import ij from './lib/index'
 
 test('Registry#ctor() fails if not a function', t => {
   const r = new ij.Registry()

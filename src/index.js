@@ -30,7 +30,7 @@ class Registry {
   _providers: IMap<string, Provider>;
 
   constructor(opt_providers?: IMap<string, Provider>) {
-    this._providers = opt_providers || new IMap<string, Provider>
+    this._providers = opt_providers || new IMap()
   }
 
   ctor(name: string, ctor: Function, opt_options?: Object): Registry {
@@ -81,8 +81,9 @@ class Registry {
 function getDependencyNames(fn: Function): Array<string> {
   if (fn.$ij && Array.isArray(fn.$ij)) return fn.$ij
 
-  const keywordIdx = 0
   const fnStr = fn.toString()
+  let keywordIdx = 0
+
   // If this is an ES6 class
   if (fnStr.startsWith('class')) {
     const ctorMatch = /\bconstructor\b/.exec(fnStr)
@@ -90,6 +91,7 @@ function getDependencyNames(fn: Function): Array<string> {
     if (!ctorMatch) return []
     keywordIdx = ctorMatch.index
   }
+
   const leftParenIdx = fnStr.indexOf('(', keywordIdx)
   const rightParenIdx = fnStr.indexOf(')', keywordIdx)
   const paramsStr = fnStr.substring(leftParenIdx + 1, rightParenIdx).trim()
@@ -239,7 +241,7 @@ class ProviderNotFound extends Error {
   }
 }
 
-function assert<T|?T>(val: T|?T, msg: string): T {
+function assert<T>(val: T|?T, msg: string): T {
   if (!val) {
     throw new Error(msg)
   }
