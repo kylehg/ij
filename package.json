@@ -1,21 +1,13 @@
 {
   "name": "ij",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "Simple dependency injection for JavaScript",
   "main": "index.js",
   "scripts": {
     "test": "ava"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/kylehg/ij"
-  },
   "author": "Kyle Hardgrave",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/kylehg/ij/issues"
-  },
-  "homepage": "https://github.com/kylehg/ij",
   "dependencies": {
     "immutable": "^3.8.1"
   },

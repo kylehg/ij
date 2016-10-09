@@ -11,7 +11,6 @@
  *
  * @flow
  */
-import q from 'promise-utils'
 import immutable from 'immutable'
 
 type ProviderType = 'CONSTANT' | 'CTOR' | 'FN';
