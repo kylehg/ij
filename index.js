@@ -81,7 +81,7 @@ class Registry {
     const provider = new Provider(name, type, factory, mappedDeps, {
       isCacheable: !!options.isCacheable
     })
-    return new Registry(this._providers.set(provider))
+    return new Registry(this._providers.set(name, provider))
   }
 
   /**
@@ -90,6 +90,14 @@ class Registry {
   buildInjector() {
     // TODO validate graph with top-sort
     return new Injector(this._providers)
+  }
+
+  /**
+   * @param {string} name
+   * @return {Promise<any>}
+   */
+  build(name) {
+    return this.buildInjector().build(name)
   }
 }
 
@@ -119,8 +127,8 @@ function getDependencyNames(fn) {
 
   const leftParenIdx = fnStr.indexOf('(', keywordIdx)
   const rightParenIdx = fnStr.indexOf(')', keywordIdx)
-  const paramsStr = fnStr.substring(leftParenIdx + 1, rightParenIdx).trim()
-  if (paramsStr === '') return []
+  const params = fnStr.substring(leftParenIdx + 1, rightParenIdx).trim()
+  if (!params) return []
 
   return params.split(',').map(p => p.trim())
 }
@@ -197,7 +205,7 @@ class Injector {
    */
   build(name) {
     if (!this._providers.has(name)) {
-      return Promise.reject(new Error(`Provider not found for ${name}`))
+      return Promise.reject(new Error(`Provider not found for "${name}"`))
     }
 
     const provider = this._providers.get(name)
@@ -226,7 +234,7 @@ class Injector {
       const depProvider = this._providers.get(depName)
       if (!depProvider) {
         // TODO clean up API for parents
-        const err = new ProviderNotFound(`Provider not found for ${depName}`)
+        const err = new ProviderNotFound(`Provider not found for "${depName}"`)
         err.parents = [provider.name]
         return Promise.reject(err)
       }
@@ -262,7 +270,7 @@ class Injector {
     const args = provider.dependencies.map(d => results.get(d))
     switch (provider.type) {
       case 'CONSTANT':
-        return Promsie.resolve(provider.factory)
+        return Promise.resolve(provider.factory)
       case 'CTOR':
         return Promise.resolve(new provider.factory(...args))
       case 'FN':

@@ -25,3 +25,7 @@ test('Registry#constant() fails if null', t => {
   const a = undefined
   t.throws(() => { r.constant('a', a) })
 })
+
+test('Registry#build() works for functions', t => {
+
+})
