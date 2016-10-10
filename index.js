@@ -79,7 +79,7 @@ class Registry {
       mappedDeps = deps.map(d => options.using[d] || d)
     }
     const provider = new Provider(name, type, factory, mappedDeps, {
-      isCacheable: !!options.isCacheable
+      isCacheable: !!options.cache
     })
     return new Registry(this._providers.set(name, provider))
   }
@@ -210,15 +210,15 @@ class Injector {
 
     const provider = this._providers.get(name)
     return this._build(provider, name)
-        .then((results) => results.get(provider.name))
-        .catch((err) => {
-          if (err instanceof ProviderNotFound) {
-            err.parents.push(name)
-            const chain = err.parents.join(' → ')
-            throw new Error(err.message + `(in dependency chain: ${chain})`)
-          }
-          throw err
-        })
+      .then((results) => results.get(provider.name))
+      .catch((err) => {
+        if (err instanceof ProviderNotFound) {
+          err.parents.push(name)
+          const chain = err.parents.join(' → ')
+          throw new Error(err.message + `(in dependency chain: ${chain})`)
+        }
+        throw err
+      })
   }
 
   /**
@@ -227,7 +227,7 @@ class Injector {
    */
   _build(provider) {
     if (this._cache.has(provider.name)) {
-      return this._cache.get(provider.name)
+      return Promise.resolve(this._cache)
     }
 
     const childPromises = provider.dependencies.map((depName) => {
